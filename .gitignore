@@ -84,3 +84,8 @@ docker-compose.*.yml
 *.pem
 *.key
 *.crt
+
+client.git-backup/
+server.git-backup/
+
+server/prisma/dev.db

@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String   // We will hash this
+  entries   Entry[]
+  createdAt DateTime @default(now())
+}
+
+model Entry {
+  id        String   @id @default(uuid())
+  content   String
+  mood      String   // "Happy", "Sad", etc.
+  trackName String?  // "Lofi Girl - Study Beats"
+  createdAt DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
