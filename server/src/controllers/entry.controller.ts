@@ -4,11 +4,8 @@ import prisma from '../lib/prisma';
 import { z } from 'zod';
 import crypto from 'crypto';
 
-// --- ENCRYPTION CONFIG ---
-// In a real app, put these in .env!
-// Key must be 32 bytes (32 chars)
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "12345678901234567890123456789012"; 
-const IV_LENGTH = 16; // For AES, this is always 16
+const IV_LENGTH = 16; 
 
 function encrypt(text: string) {
   const iv = crypto.randomBytes(IV_LENGTH);
@@ -28,11 +25,11 @@ function decrypt(text: string) {
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
   } catch (error) {
-    return "[Encrypted Content]"; // Fallback if key changes
+    return "[Encrypted Content]"; 
   }
 }
 
-// --- CONTROLLER ---
+
 
 const EntrySchema = z.object({
   content: z.string().min(1),
@@ -46,12 +43,11 @@ export const createEntry = async (req: AuthRequest, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    // ENCRYPT BEFORE SAVING
     const encryptedContent = encrypt(content);
 
     const entry = await prisma.entry.create({
       data: {
-        content: encryptedContent, // Store gibberish
+        content: encryptedContent, 
         mood,
         userId,
       },
@@ -74,7 +70,6 @@ export const getEntries = async (req: AuthRequest, res: Response) => {
             orderBy: { createdAt: 'desc' }
         });
 
-        // DECRYPT BEFORE SENDING BACK
         const decryptedEntries = entries.map(entry => ({
             ...entry,
             content: decrypt(entry.content)

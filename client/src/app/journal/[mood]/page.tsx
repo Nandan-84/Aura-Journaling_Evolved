@@ -11,7 +11,6 @@ import {
 import api from "@/lib/api";
 import YouTube from "react-youtube";
 
-
 const RANDOM_GREETINGS: Record<string, string[]> = {
   happy: [
     "What made you smile today?",
@@ -45,6 +44,8 @@ const RANDOM_GREETINGS: Record<string, string[]> = {
   ]
 };
 
+const isPlaylistId = (id: string) => id.startsWith("PL") || id.startsWith("RD") || id.startsWith("UU");
+
 export default function JournalPage() {
   const router = useRouter();
   const params = useParams(); 
@@ -62,6 +63,7 @@ export default function JournalPage() {
   const [displayedGreeting, setDisplayedGreeting] = useState("");
   const [finalGreeting, setFinalGreeting] = useState(""); 
   const [isTypingComplete, setIsTypingComplete] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
   const [volume, setVolume] = useState(40);
   const [isMuted, setIsMuted] = useState(false);
@@ -69,15 +71,12 @@ export default function JournalPage() {
   const [inputUrl, setInputUrl] = useState("");
   const [currentTrackTitle, setCurrentTrackTitle] = useState(""); 
   
-  
   const [formats, setFormats] = useState({ bold: false, italic: false, underline: false });
-  
   
   const [queue, setQueue] = useState<string[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [isQueueMode, setIsQueueMode] = useState(false); 
 
-  
   const MOOD_VIDEOS: Record<string, string> = {
     happy: "/videos/happy.mp4",
     calm: "/videos/calm.mp4",
@@ -104,22 +103,28 @@ export default function JournalPage() {
   const videoUrl = MOOD_VIDEOS[moodKey] || MOOD_VIDEOS["neutral"];
   const caretColorClass = MOOD_CARETS[moodKey] || "caret-white";
 
-  
-  const isPlaylistId = (id: string) => id.startsWith("PL") || id.startsWith("RD") || id.startsWith("UU");
+  const LOOP_START_POINT = 2.0; 
 
   const handleVideoTimeUpdate = () => {
     if (!videoRef.current) return;
     const { currentTime, duration } = videoRef.current;
-    
-    const LOOP_START_POINT = 2.0; 
-
-    if (duration > 0 && duration - currentTime < 0.2) {
+    if (duration > 0 && duration - currentTime < 0.3) {
         videoRef.current.currentTime = LOOP_START_POINT;
         videoRef.current.play();
     }
   };
 
-  
+  const handleVideoEnded = () => {
+    if (videoRef.current) {
+        videoRef.current.currentTime = LOOP_START_POINT;
+        videoRef.current.play();
+    }
+  };
+
+  const handleVideoPlay = () => {
+    setVideoLoaded(true);
+  };
+
   useEffect(() => {
     setDisplayedGreeting("");
     setIsTypingComplete(false);
@@ -142,47 +147,37 @@ export default function JournalPage() {
     }, 1500);
 
     return () => clearTimeout(startDelay);
-  }, [moodKey]); 
+  }, [moodKey]);
 
- 
   useGSAP(() => {
     const tl = gsap.timeline();
-
-    
     tl.fromTo(".journal-window", 
       { width: "20rem", height: "24rem", borderRadius: "2rem", opacity: 0 },
       { width: "100vw", height: "100vh", borderRadius: "0rem", opacity: 1, duration: 1.4, ease: "expo.inOut" }
     );
-
-    
     gsap.to(".wave-top", { y: "15%", scaleY: 1.2, duration: 3, yoyo: true, repeat: -1, ease: "sine.inOut" });
     gsap.to(".wave-bottom", { y: "-15%", scaleY: 1.2, duration: 4, yoyo: true, repeat: -1, delay: 0.5, ease: "sine.inOut" });
     gsap.to(".wave-left", { x: "15%", scaleX: 1.2, duration: 3.5, yoyo: true, repeat: -1, delay: 0.2, ease: "sine.inOut" });
     gsap.to(".wave-right", { x: "-15%", scaleX: 1.2, duration: 3.2, yoyo: true, repeat: -1, delay: 0.8, ease: "sine.inOut" });
-
     tl.fromTo([".mini-player", ".volume-control"], { opacity: 0 }, { opacity: 1, duration: 0.5, stagger: 0.2 }, "+=0.5");
-
   }, { scope: containerRef });
 
   useGSAP(() => {
     if (isTypingComplete) {
       const tl = gsap.timeline();
-      tl.to(".greeting-container", { top: "16%", scale: 0.7, duration: 1, ease: "power3.inOut" });
+      tl.to(".greeting-container", { top: "14%", scale: 0.7, duration: 1, ease: "power3.inOut" });
       tl.to([".glass-editor-box", ".top-controls"], { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: "power2.out" }, "-=0.5");
     }
   }, { scope: containerRef, dependencies: [isTypingComplete] });
 
-  
   useGSAP(() => {
     if (isSaved) {
       const tl = gsap.timeline();
-      
       tl.to([".top-controls", ".mini-player", ".volume-control", ".greeting-container"], {
         opacity: 0,
         duration: 0.5,
         ease: "power2.out"
       });
-
       tl.to(".glass-editor-box", {
         scale: 0.8,
         opacity: 0,
@@ -190,7 +185,6 @@ export default function JournalPage() {
         duration: 0.6,
         ease: "back.in(1.7)"
       }, "-=0.3");
-
       tl.fromTo(".saved-success", 
         { scale: 0.5, opacity: 0 },
         { scale: 1, opacity: 1, duration: 0.8, ease: "elastic.out(1, 0.5)" }
@@ -198,15 +192,11 @@ export default function JournalPage() {
     }
   }, { scope: containerRef, dependencies: [isSaved] });
 
-
-
   const fadeOutMusic = (callback: () => void) => {
     if (!playerRef.current) {
         callback();
         return;
     }
-
-    
     const volObj = { val: volume };
     gsap.to(volObj, {
         val: 0,
@@ -249,7 +239,6 @@ export default function JournalPage() {
         updateTrackTitle(event.target);
     }
     if (event.data === 2) setIsPlaying(false);
-    
     if (event.data === 0 && isQueueMode) {
         if (queueIndex < queue.length - 1) {
             setQueueIndex(prev => prev + 1);
@@ -357,13 +346,10 @@ export default function JournalPage() {
     } else if (indexToRemove === queueIndex) {
         if (queueIndex >= newQueue.length) {
             setQueueIndex(0);
-        } else {
-            
         }
     }
   };
 
-  
   const checkFormats = () => {
     setFormats({
       bold: document.queryCommandState("bold"),
@@ -390,7 +376,6 @@ export default function JournalPage() {
       await api.post("/entries", { content: htmlContent, mood: currentMood.label });
       triggerSuccess();
     } catch (error) {
-      console.error("Save failed:", error);
       triggerSuccess();
     }
   };
@@ -398,16 +383,13 @@ export default function JournalPage() {
   const triggerSuccess = () => {
     setIsSaving(false);
     setIsSaved(true);
-
-    
     setTimeout(() => {
         fadeOutMusic(() => {
-             router.push("/dashboard");
+            router.push("/dashboard");
         });
-    }, 1000);
+    }, 1500);
   };
 
- 
   const handleExit = () => {
       fadeOutMusic(() => {
           router.push("/dashboard");
@@ -416,7 +398,6 @@ export default function JournalPage() {
 
   return (
     <main ref={containerRef} className="fixed inset-0 bg-black text-white flex items-center justify-center z-50 overflow-hidden">
-      
       
       <div className="hidden">
         {isQueueMode && queue.length > 0 ? (
@@ -462,9 +443,7 @@ export default function JournalPage() {
         )}
       </div>
 
-      
       <div className="journal-window relative bg-[#050505] w-full h-full flex flex-col items-center justify-center overflow-hidden">
-        
         
         <div className="absolute inset-0 pointer-events-none z-10"
              style={{ 
@@ -477,7 +456,6 @@ export default function JournalPage() {
              <div className={`wave-right absolute top-0 bottom-0 right-0 w-[30vw] bg-gradient-to-l ${currentMood.color} to-transparent opacity-40 blur-[80px]`} />
         </div>
 
-        
         {isSaved && (
           <div className="saved-success absolute inset-0 z-50 flex flex-col items-center justify-center">
             <div className="p-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-6 shadow-2xl shadow-green-500/20">
@@ -488,7 +466,6 @@ export default function JournalPage() {
           </div>
         )}
 
-        
         <div className="top-controls opacity-0 translate-y-4 absolute top-8 right-8 z-30 flex items-center gap-3">
             <button onClick={toggleMute} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 transition-all active:scale-95 text-white/70 hover:text-white">
                 {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -516,7 +493,6 @@ export default function JournalPage() {
             </button>
         </div>
 
-        
         <div className="top-controls opacity-0 translate-y-4 absolute top-8 left-8 z-30">
             <button 
                 onClick={handleExit} 
@@ -529,7 +505,6 @@ export default function JournalPage() {
             </button>
         </div>
 
-        
         <div className="volume-control opacity-0 absolute right-8 top-1/2 -translate-y-1/2 z-30 h-48 w-10 flex items-center justify-center bg-white/5 backdrop-blur-md border border-white/10 rounded-full shadow-lg">
              <div className="relative w-full h-full flex items-center justify-center">
                 <input 
@@ -539,7 +514,6 @@ export default function JournalPage() {
              </div>
         </div>
 
-        
         {showQueue && (
             <div className="absolute top-24 right-8 z-40 w-72 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
                 <div className="flex items-center gap-2 mb-4 text-white/50 text-xs uppercase tracking-wider border-b border-white/10 pb-2">
@@ -584,7 +558,6 @@ export default function JournalPage() {
             </div>
         )}
 
-        
         <div className="editor-container relative z-20 w-full max-w-7xl px-4 h-full flex flex-col items-center justify-center">
             
             <div className="greeting-container absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 text-center w-full px-8 pointer-events-none">
@@ -594,29 +567,29 @@ export default function JournalPage() {
                 </h1>
             </div>
 
-            
             <div className="glass-editor-box opacity-0 translate-y-8 relative w-full max-w-5xl h-[60vh] rounded-3xl overflow-hidden border border-white/20 shadow-2xl mt-32">
-                
-                
                 <div className="absolute inset-0 z-0 bg-black">
                     <video 
                         ref={videoRef}
                         key={videoUrl} 
-                        autoPlay loop muted preload="auto" playsInline
+                        autoPlay 
+                        loop 
+                        muted 
+                        preload="auto" 
+                        playsInline
                         className="w-full h-full object-cover transition-opacity duration-1000" 
                         style={{ opacity: 0.6 }} 
                         onTimeUpdate={handleVideoTimeUpdate} 
+                        onEnded={handleVideoEnded}
+                        onPlay={handleVideoPlay}
                     >
                         <source src={videoUrl} type="video/mp4" />
                     </video>
                 </div>
                 
-                
-                <div className="absolute inset-0 z-10 bg-black/5 backdrop-blur-[2px]" /> 
+                <div className="absolute inset-0 z-10 bg-black/5" /> 
 
-                
                 <div className="relative z-20 w-full h-full flex flex-col p-8 md:p-12">
-                    
                     <div className="flex items-center gap-2 mb-6 pb-4 border-b border-white/10">
                         <button 
                             onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }}
@@ -642,7 +615,7 @@ export default function JournalPage() {
                         <div className="flex-1" />
                         <span className="text-xs uppercase tracking-widest text-white/30">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                     </div>
-                    
+
                     <div 
                         ref={editorRef}
                         contentEditable
@@ -659,7 +632,6 @@ export default function JournalPage() {
                 </div>
             </div>
 
-            
             <div className="glass-editor-box opacity-0 translate-y-8 mt-8">
                 <button
                     onClick={handleSave}
@@ -676,7 +648,6 @@ export default function JournalPage() {
 
         </div>
 
-        
         <div className="mini-player opacity-0 absolute bottom-8 right-8 z-40">
             <div className="flex items-center gap-4 bg-black/40 backdrop-blur-md border border-white/10 pr-6 pl-2 py-2 rounded-full shadow-2xl">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br ${currentMood.color} ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`}>

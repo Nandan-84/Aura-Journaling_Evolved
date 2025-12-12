@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 
+
 const MOODS = [
   { id: "happy", label: "Happy", icon: Sun, color: "text-amber-300", gradient: "from-amber-300 to-orange-500" },
   { id: "calm", label: "Calm", icon: Coffee, color: "text-emerald-300", gradient: "from-emerald-300 to-teal-500" },
@@ -17,7 +18,7 @@ const MOODS = [
   { id: "neutral", label: "Just Okay", icon: Smile, color: "text-gray-300", gradient: "from-gray-200 to-gray-400" },
 ];
 
-const GREETING_PREFIXES = ["Hello", "Welcome", "Hi", "Greetings", "ನಮಸ್ಕಾರ", "नमस्ते", "Hola", "Bonjour"];
+const GREETING_PREFIXES = ["Hello", "Welcome", "Hi", "Greetings"];
 
 export default function Dashboard() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function Dashboard() {
     setName(savedName || "Traveler");
     setGreetingPrefix(GREETING_PREFIXES[Math.floor(Math.random() * GREETING_PREFIXES.length)]);
 
+    
     const updateTime = () => {
       const now = new Date();
       const datePart = now.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase().replace(/,/g, '');
@@ -77,6 +79,7 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, []);
 
+ 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -123,9 +126,18 @@ export default function Dashboard() {
     
   }, { scope: containerRef, dependencies: [loading, hasEntryToday] });
 
-  const handleLogout = () => {
-    localStorage.removeItem("userName");
-    router.push("/");
+  
+  const handleLogout = async () => {
+    try {
+      
+      await api.post('/auth/logout');
+    } catch (err) {
+      console.error("Logout error", err);
+    } finally {
+      
+      localStorage.removeItem("userName");
+      router.push("/");
+    }
   };
 
   if (loading) return <div className="min-h-screen bg-black" />;
@@ -136,7 +148,8 @@ export default function Dashboard() {
       <div className="app-background opacity-30 fixed inset-0" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none fixed" />
 
-      <div className="center-content text-center z-10 flex flex-col items-center w-full max-w-5xl mb-8">
+      
+      <div className="center-content text-center z-10 flex flex-col items-center w-full max-w-5xl mb-8 mt-2">
         <h1 className="hero-text invisible opacity-0 translate-y-4 text-4xl md:text-6xl font-medium tracking-tight mb-3">
             <span className="bg-clip-text text-transparent bg-linear-to-r from-purple-400 via-pink-500 to-orange-400 font-bold">
             {hasEntryToday ? "Welcome Back" : greetingPrefix}
@@ -149,7 +162,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      
       {!hasEntryToday ? (
+        
         <div className="w-full max-w-7xl z-10 px-4 flex flex-col items-center pb-20">
             <div className="subtitle-text invisible opacity-0 translate-y-4 h-12 flex items-center justify-center mb-8">
                 <p className="text-2xl md:text-3xl text-gray-500 font-light tracking-wide">
@@ -178,7 +193,7 @@ export default function Dashboard() {
             </div>
         </div>
       ) : (
-
+        
         <div className="history-container w-full max-w-3xl z-10 flex flex-col items-center pb-12">
             
             <p className="text-white/40 text-sm uppercase tracking-[0.3em] mb-4 animate-pulse">
@@ -192,8 +207,7 @@ export default function Dashboard() {
 
             
             <div className="w-full bg-white/5 border border-white/10 backdrop-blur-xl rounded-[2rem] p-6 shadow-2xl">
-                
-                <div className="flex justify-between items-center mb-6 px-2">
+                <div className="flex justify-between items-center mb-4 px-2">
                     <span className="text-xl font-medium text-white tracking-wide uppercase">
                         {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                     </span>
@@ -203,17 +217,15 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                
                 <div className="grid grid-cols-7 gap-2 mb-3">
                     {['S','M','T','W','T','F','S'].map((d, i) => (
                         <div key={i} className="text-center text-xs text-white/30 font-bold uppercase tracking-widest">{d}</div>
                     ))}
                 </div>
 
-                
                 <div className="grid grid-cols-7 gap-2">
                     {Array.from({ length: firstDay }).map((_, i) => (
-                        <div key={`empty-${i}`} className="h-12 md:h-14" />
+                        <div key={`empty-${i}`} className="h-10 md:h-12" />
                     ))}
 
                     {Array.from({ length: days }).map((_, i) => {
@@ -222,29 +234,25 @@ export default function Dashboard() {
                         const isToday = day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
                         
                         return (
-                            <div key={day} className="relative group h-12 md:h-14">
+                            <div key={day} className="relative group h-10 md:h-12">
                                 <button
                                     onClick={() => handleDayClick(entry)}
                                     disabled={!entry}
-                                    className={`w-full h-full rounded-xl flex flex-col items-center justify-center transition-all duration-300
+                                    className={`w-full h-full rounded-lg flex flex-col items-center justify-center transition-all duration-300
                                         ${entry 
-                                            ? "bg-white/10 hover:bg-white/20 border border-white/10 hover:border-white/30 hover:-translate-y-1 shadow-lg" 
+                                            ? "bg-white/10 hover:bg-white/20 border border-white/10 hover:border-white/30 hover:-translate-y-0.5 shadow-lg" 
                                             : "bg-white/[0.02] border border-white/5 text-white/20 cursor-default"
                                         }
                                         ${isToday && !entry ? "border-dashed border-white/20 bg-white/[0.05]" : ""}
                                     `}
                                 >
-                                    <span className={`text-sm font-medium ${entry ? "text-white" : "text-white/20"}`}>{day}</span>
-                                    
-                                    
+                                    <span className={`text-xs font-medium ${entry ? "text-white" : "text-white/20"}`}>{day}</span>
                                     {entry && (
-                                       <div className="mt-1.5 h-1 w-4 rounded-full bg-gradient-to-r from-purple-400 to-blue-400 opacity-60 group-hover:w-8 group-hover:opacity-100 transition-all duration-300" />
+                                       <div className="mt-1 h-0.5 w-3 rounded-full bg-gradient-to-r from-purple-400 to-blue-400 opacity-60 group-hover:w-6 group-hover:opacity-100 transition-all duration-300" />
                                     )}
                                 </button>
-                                
-                                
                                 {!entry && (
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1 bg-black/90 backdrop-blur-md border border-white/10 rounded-lg text-xs text-white/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-2 py-1 bg-black/90 backdrop-blur-md border border-white/10 rounded-lg text-xs text-white/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                         No entry
                                     </div>
                                 )}
@@ -257,7 +265,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      
+     
       <button 
         onClick={handleLogout}
         className="fixed bottom-8 left-8 p-4 rounded-full bg-white/5 hover:bg-red-900/20 border border-white/10 hover:border-red-500/30 transition-all duration-300 group backdrop-blur-md z-50 cursor-pointer"
