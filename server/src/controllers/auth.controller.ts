@@ -133,6 +133,10 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
 
+    console.log("RESET LINK: http://localhost:3000/reset-password?token=" + resetToken);
+
+
+
     await transporter.sendMail({
       to: email,
       subject: 'Aura – Password Reset',
@@ -145,9 +149,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     res.json({ message: "Password reset link sent." });
   } catch (error) {
-    console.error(error);
-    res.status(400).json({ error: "Failed to send reset link" });
-  }
+  console.error("EMAIL ERROR:", error);
+  res.status(400).json({ error: "Failed to send reset link" });
+}
 };
 
 // ==========================================
