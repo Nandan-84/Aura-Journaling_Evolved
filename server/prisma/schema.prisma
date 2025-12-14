@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url = env("DATABASE_URL")
 }
 
 model User {
@@ -15,6 +15,10 @@ model User {
   password  String   // We will hash this
   entries   Entry[]
   createdAt DateTime @default(now())
+
+  resetToken     String? 
+  resetTokenExp  DateTime?
+
 }
 
 model Entry {
