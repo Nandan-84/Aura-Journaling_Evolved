@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { Sparkles, AlertCircle } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [passwordError, setPasswordError] = useState(""); 
+  const [isLoading, setIsLoading] = useState(false);
 
   useGSAP(() => {
     const tl = gsap.timeline();
@@ -22,8 +24,8 @@ export default function LoginPage() {
 
   const validatePassword = (pass: string) => {
     if (pass.length < 8) {
-        setPasswordError("Password must be at least 8 characters");
-        return false;
+      setPasswordError("Password must be at least 8 characters");
+      return false;
     }
     setPasswordError("");
     return true;
@@ -32,55 +34,57 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
+
     if (!isLogin && !validatePassword(formData.password)) {
-        return;
+      return;
     }
 
-    try {
-      const endpoint = isLogin ? "/auth/login" : "/auth/register";
-      const res = await api.post(endpoint, formData);
-      
-      const userName = res.data.user?.name || formData.name || "Traveler";
-      localStorage.setItem("userName", userName);
+    setIsLoading(true);
 
-      router.push("/dashboard"); 
+    try {
+      if (isLogin) {
+        const res = await api.post("/auth/login", formData);
+        const userName = res.data.user?.name || "Traveler";
+        localStorage.setItem("userName", userName);
+        router.push("/dashboard");
+      } else {
+        await api.post("/auth/register", formData);
+        router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || "Something went wrong");
+      setIsLoading(false);
     }
   };
 
   return (
     <main ref={containerRef} className="flex min-h-screen items-center justify-center relative">
-      
       <div className="app-background" />
       <div className="absolute inset-0 bg-black/60 z-0" />
 
       <div className="glass-card z-10">
-        
         <div className="text-center mb-10 form-item pt-4">
           <div className="inline-flex items-center gap-3 mb-3">
             <Sparkles className="w-6 h-6 text-white/90" />
             <h1 className="text-4xl font-medium tracking-[0.2em] text-white uppercase">Aura</h1>
           </div>
-          
           <p className="text-gray-400 font-medium text-[11px] uppercase tracking-[0.4em] ml-1">
             Journaling Evolved
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 form-item">
-          
           {!isLogin && (
-             <div className="group">
-               <input 
-                 type="text" placeholder="Name" 
-                 className="glass-input"
-                 value={formData.name} 
-                 onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
-                 required
-               />
-             </div>
+            <div className="group">
+              <input 
+                type="text"
+                placeholder="Name"
+                className="glass-input"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
           )}
 
           <div className="group">
@@ -101,35 +105,43 @@ export default function LoginPage() {
               className={`glass-input ${passwordError ? "border-red-500/50 focus:border-red-500" : ""}`}
               value={formData.password}
               onChange={(e) => {
-                  setFormData({ ...formData, password: e.target.value });
-                  if (!isLogin) validatePassword(e.target.value);
+                setFormData({ ...formData, password: e.target.value });
+                if (!isLogin) validatePassword(e.target.value);
               }}
               required
             />
+
             {isLogin && (
-                <div className="text-right mt-2">
-                    <a href="#" className="text-[10px] text-white/40 hover:text-white transition-colors uppercase tracking-wider">
-                        Forgot Password?
-                    </a>
-                </div>
+              <div className="text-right mt-2">
+                <Link
+                  href="/forgot-password"
+                  className="text-[10px] text-white/40 hover:text-white transition-colors uppercase tracking-wider"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
             )}
           </div>
-          
+
           {passwordError && !isLogin && (
-             <p className="text-red-400 text-xs flex items-center gap-1 pl-1">
-                 <AlertCircle className="w-3 h-3" /> {passwordError}
-             </p>
+            <p className="text-red-400 text-xs flex items-center gap-1 pl-1">
+              <AlertCircle className="w-3 h-3" /> {passwordError}
+            </p>
           )}
 
-          {error && <p className="text-red-300 text-xs text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20">{error}</p>}
+          {error && (
+            <p className="text-red-300 text-xs text-center bg-red-500/10 py-2 rounded-lg border border-red-500/20">
+              {error}
+            </p>
+          )}
 
-          <button type="submit" className="btn-primary mt-2">
-            {isLogin ? "Enter" : "Create Account"}
+          <button type="submit" disabled={isLoading} className="btn-primary mt-2">
+            {isLoading ? "Processing..." : isLogin ? "Enter" : "Create Account"}
           </button>
         </form>
 
         <div className="mt-8 text-center form-item pb-2">
-          <button 
+          <button
             onClick={() => {
               setIsLogin(!isLogin);
               setError("");

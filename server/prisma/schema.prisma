@@ -1,31 +1,38 @@
 generator client {
   provider = "prisma-client-js"
-  engineType = "binary"
 }
 
 datasource db {
   provider = "sqlite"
-  url = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String
-  password  String   // We will hash this
-  entries   Entry[]
-  createdAt DateTime @default(now())
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  password      String
+  entries       Entry[]
+  
+  // New Profile Fields
+  dob           DateTime?
+  gender        String?
 
-  resetToken     String? 
-  resetTokenExp  DateTime?
+  // Auth fields
+  resetToken    String?
+  resetTokenExp DateTime?
+  isVerified    Boolean   @default(false)
+  otp           String?
+  otpExp        DateTime?
 
+  createdAt     DateTime  @default(now())
 }
 
 model Entry {
   id        String   @id @default(uuid())
   content   String
-  mood      String   // "Happy", "Sad", etc.
-  trackName String?  // "Lofi Girl - Study Beats"
+  mood      String
+  trackName String?
   createdAt DateTime @default(now())
   
   userId    String

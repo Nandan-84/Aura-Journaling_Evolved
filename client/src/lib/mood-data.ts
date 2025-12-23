@@ -3,7 +3,7 @@ export const MOOD_DATA: Record<string, any> = {
     label: "Happy",
     color: "from-amber-400 to-orange-500",
     shadow: "shadow-orange-500/20",
-    playlistId: "RDoJ8TZqeWmlo", 
+    playlistId: "RDU-vO38hfbT4", 
     greeting: "What made you smile today?",
   },
   calm: {
