@@ -17,17 +17,17 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  // Profile Data
+ 
   const [profile, setProfile] = useState({ name: "", email: "", dob: "", gender: "" });
   
-  // Security Data
+  
   const [security, setSecurity] = useState({ currentPassword: "", newPassword: "" });
   
-  // Delete Data
+  
   const [deletePassword, setDeletePassword] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Fetch Profile
+  
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -46,16 +46,16 @@ export default function ProfilePage() {
     fetchProfile();
   }, []);
 
-  // Animations
+  
   useGSAP(() => {
     if (isLoading) return;
     const tl = gsap.timeline();
-    // CHANGED: Target .glass-card instead of .glass-panel
+    
     tl.from(".glass-card", { y: 30, opacity: 0, duration: 1, ease: "power3.out" });
     tl.from(".form-group", { y: 20, opacity: 0, stagger: 0.1, duration: 0.8 }, "-=0.6");
   }, { scope: containerRef, dependencies: [isLoading] });
 
-  // Handlers
+ 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -100,15 +100,12 @@ export default function ProfilePage() {
   if (isLoading) return <div className="min-h-screen bg-black" />;
 
   return (
-    // Updated: reduced padding p-6 -> p-4
+    
     <main ref={containerRef} className="min-h-screen bg-black text-white p-4 flex flex-col items-center relative overflow-y-auto">
       
-      {/* Background Image (Matching other pages) */}
+      
       <div className="app-background opacity-30 fixed inset-0" />
-      {/* Ambient Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none fixed" />
-
-      {/* Header - Widened to max-w-4xl, reduced mb-6 -> mb-4 */}
       <div className="w-full max-w-4xl flex items-center justify-between mb-4 z-10 mt-4">
         <button onClick={() => router.push("/dashboard")} className="flex items-center gap-3 text-white/40 hover:text-white transition-colors group">
           <div className="p-2 rounded-full border border-white/10 group-hover:bg-white/10 transition-all">
@@ -118,11 +115,7 @@ export default function ProfilePage() {
         </button>
         <h1 className="text-xl font-light tracking-widest uppercase">Settings</h1>
       </div>
-
-      {/* Main Panel - REVERTED TO .glass-card FOR EFFECT, OVERRIDDEN WIDTH */}
       <div className="glass-card w-full !max-w-4xl p-8 z-10 mb-10">
-        
-        {/* Tabs */}
         <div className="flex gap-6 border-b border-white/10 pb-4 mb-6">
           <button 
             onClick={() => setActiveTab("profile")}
@@ -137,8 +130,6 @@ export default function ProfilePage() {
             Security
           </button>
         </div>
-
-        {/* Message Alert */}
         {message.text && (
           <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${message.type === "success" ? "bg-green-500/10 border border-green-500/20 text-green-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
             {message.type === "success" ? <CheckCircle2 className="w-5 h-5"/> : <AlertTriangle className="w-5 h-5"/>}
@@ -146,7 +137,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* --- PROFILE TAB --- */}
+       
         {activeTab === "profile" && (
           <form onSubmit={handleUpdateProfile} className="space-y-6">
             <div className="form-group space-y-2">
@@ -202,12 +193,9 @@ export default function ProfilePage() {
           </form>
         )}
 
-        {/* --- SECURITY TAB --- */}
         {activeTab === "security" && (
-            // Reduced spacing space-y-12 -> space-y-8
           <div className="space-y-8">
                 
-                {/* Change Password */}
             <form onSubmit={handleChangePassword} className="space-y-6">
               <h3 className="text-lg font-light text-white mb-4">Change Password</h3>
               <div className="form-group space-y-2">
@@ -235,13 +223,10 @@ export default function ProfilePage() {
               </div>
             </form>
 
-                {/* DANGER ZONE */}
-                {/* Reduced padding pt-8 -> pt-6 */}
             <div className="border-t border-red-500/20 pt-6">
               <h3 className="text-lg font-light text-red-400 mb-2 flex items-center gap-2">
                 <ShieldAlert className="w-5 h-5"/> Danger Zone
               </h3>
-                    {/* Reduced margin mb-6 -> mb-4 */}
               <p className="text-white/40 text-xs mb-4">
                 Deleting your account is permanent. All your journal entries will be wiped.
               </p>
