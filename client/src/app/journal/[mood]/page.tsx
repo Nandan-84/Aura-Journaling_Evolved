@@ -226,20 +226,23 @@ export default function JournalPage() {
 
   const onPlayerReady = (event: any) => {
     playerRef.current = event.target;
-    playerRef.current.setVolume(volume);
-    if (isMuted) playerRef.current.mute();
-    event.target.playVideo(); 
+    if(playerRef.current.setVolume) playerRef.current.setVolume(volume);
+    if (isMuted && playerRef.current.mute) playerRef.current.mute();
+    
+    if(event.target.playVideo) event.target.playVideo(); 
+    
     setIsPlaying(true);
     updateTrackTitle(event.target);
   };
 
   const onPlayerStateChange = (event: any) => {
-    if (event.data === 1) {
+    if (event.data === 1) { // Playing
         setIsPlaying(true);
         updateTrackTitle(event.target);
     }
-    if (event.data === 2) setIsPlaying(false);
-    if (event.data === 0 && isQueueMode) {
+    if (event.data === 2) setIsPlaying(false); // Paused
+    
+    if (event.data === 0 && isQueueMode) { // Ended
         if (queueIndex < queue.length - 1) {
             setQueueIndex(prev => prev + 1);
         } else {
@@ -250,20 +253,27 @@ export default function JournalPage() {
     }
   };
 
+  const onPlayerError = (event: any) => {
+      console.error("YouTube Player Error:", event.data);
+      if (isQueueMode) {
+          handleNextTrack();
+      }
+  };
+
   const togglePlay = () => {
     if (!playerRef.current) return;
-    if (isPlaying) playerRef.current.pauseVideo();
-    else playerRef.current.playVideo();
+    if (isPlaying && playerRef.current.pauseVideo) playerRef.current.pauseVideo();
+    else if(playerRef.current.playVideo) playerRef.current.playVideo();
     setIsPlaying(!isPlaying);
   };
 
   const toggleMute = () => {
     if (!playerRef.current) return;
     if (isMuted) {
-      playerRef.current.unMute();
+      if(playerRef.current.unMute) playerRef.current.unMute();
       setIsMuted(false);
     } else {
-      playerRef.current.mute();
+      if(playerRef.current.mute) playerRef.current.mute();
       setIsMuted(true);
     }
   };
@@ -280,7 +290,7 @@ export default function JournalPage() {
         }
       }
     } else {
-      if (playerRef.current) playerRef.current.nextVideo();
+      if (playerRef.current && playerRef.current.nextVideo) playerRef.current.nextVideo();
     }
   };
 
@@ -292,19 +302,19 @@ export default function JournalPage() {
         }
       }
     } else {
-      if (playerRef.current) playerRef.current.previousVideo();
+      if (playerRef.current && playerRef.current.previousVideo) playerRef.current.previousVideo();
     }
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVol = parseInt(e.target.value);
     setVolume(newVol);
-    if (playerRef.current) {
+    if (playerRef.current && playerRef.current.setVolume) {
       playerRef.current.setVolume(newVol);
     }
     if (newVol > 0 && isMuted) {
       setIsMuted(false);
-      playerRef.current?.unMute();
+      playerRef.current?.unMute && playerRef.current.unMute();
     }
   };
 
@@ -396,51 +406,48 @@ export default function JournalPage() {
       });
   };
 
+  const youtubeOpts = {
+    height: '250', 
+    width: '250', 
+    playerVars: {
+      autoplay: 1, 
+      controls: 0,
+      disablekb: 1,
+      fs: 0,
+      loop: 1,
+      origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+    },
+  };
+
   return (
     <main ref={containerRef} className="fixed inset-0 bg-black text-white flex items-center justify-center z-50 overflow-hidden">
-      <div className="fixed bottom-0 right-0 z-[-10] opacity-[0.01] pointer-events-none">
+      <div className="fixed bottom-0 right-0 z-[-10] opacity-100 pointer-events-none">
         {isQueueMode && queue.length > 0 ? (
            <YouTube
              key={`queue-${queue[queueIndex]}`} 
              videoId={queue[queueIndex]}
-             opts={{ height: '200', width: '200', playerVars: { autoplay: 1, controls: 0 } }}
+             opts={{ ...youtubeOpts, playerVars: { ...youtubeOpts.playerVars, playlist: undefined } }}
              onReady={onPlayerReady}
              onStateChange={onPlayerStateChange}
+             onError={onPlayerError}
            />
         ) : (
            isPlaylistId(currentMood.playlistId) ? (
              <YouTube
                key={`default-${currentMood.playlistId}`} 
-               opts={{
-                 height: '200', 
-                 width: '200',
-                 playerVars: { 
-                   listType: 'playlist', 
-                   list: currentMood.playlistId, 
-                   autoplay: 1, 
-                   controls: 0, 
-                   loop: 1 
-                 },
-               }}
+               opts={{ ...youtubeOpts, playerVars: { ...youtubeOpts.playerVars, listType: 'playlist', list: currentMood.playlistId } }}
                onReady={onPlayerReady}
                onStateChange={onPlayerStateChange}
+               onError={onPlayerError}
              />
            ) : (
              <YouTube
                key={`default-single-${currentMood.playlistId}`} 
                videoId={currentMood.playlistId}
-               opts={{
-                 height: '200', 
-                 width: '200',
-                 playerVars: { 
-                   autoplay: 1, 
-                   controls: 0, 
-                   loop: 1,
-                   playlist: currentMood.playlistId 
-                 },
-               }}
+               opts={{ ...youtubeOpts, playerVars: { ...youtubeOpts.playerVars, playlist: currentMood.playlistId } }}
                onReady={onPlayerReady}
                onStateChange={onPlayerStateChange}
+               onError={onPlayerError}
              />
            )
         )}
