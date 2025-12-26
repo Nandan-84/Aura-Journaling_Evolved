@@ -4,18 +4,21 @@ import {
   ArrowLeft, Save, Music, Play, Pause, Bold, Italic, Underline, 
   Volume2, VolumeX, Plus, Search, X, Disc, ListMusic, SkipBack, SkipForward, Trash2, CheckCircle2, Loader2, AlertCircle, AlertTriangle, Sparkles, ChevronRight, ChevronLeft
 } from "lucide-react";
+
+
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useRouter, useParams } from "next/navigation"; 
 import { MOOD_DATA } from "@/lib/mood-data";
 import api from "@/lib/api";
 import YouTube from "react-youtube";
+
 const RANDOM_GREETINGS: Record<string, string[]> = {
-  happy: ["What made you smile today?", "Capture this joy, keep it forever.", "Tell me about your win.", "Happiness looks good on you."],
-  calm: ["Breathe in. What's on your mind?", "Slow down. The world can wait.", "Peace is a priority today.", "Find your center. Write it down."],
-  energetic: ["Let's channel that energy! What's next?", "You're on fire today. Document it.", "Momentum is building. What are you creating?", "Full speed ahead."],
-  melancholic: ["It's okay to feel this way. Write it out.", "Rain brings growth. Let it out.", "This is a safe space for your thoughts.", "Healing starts with feeling."],
-  neutral: ["Tell me about your day.", "Just a regular day? Let's log it.", "Clear your mind.", "One day at a time."]
+  happy: ["What made you smile today?", "Capture this joy, keep it forever.", "Tell me about your win.", "Happiness looks good on you.", "What made this feeling stick?", "Let this one stay a little longer.", "You’re allowed to enjoy this.", "Hold onto what worked today."],
+  calm: ["Breathe in. What's on your mind?", "Slow down. The world can wait.", "Peace is a priority today.", "Find your center. Write it down.", "What helped things feel steady?", "It’s okay to move slowly.", "Nothing needs fixing right now.", "This quiet counts too."],
+  energetic: ["Let's channel that energy! What's next?", "You're on fire today. Document it.", "Momentum is building. What are you creating?", "Full speed ahead.", "Where did all this drive come from?", "Use it while it’s here.", "Follow the momentum.", "Let yourself go all in."],
+  melancholic: ["It's okay to feel this way. Write it out.", "Rain brings growth. Let it out.", "This is a safe space for your thoughts.", "Healing starts with feeling.", "What’s been sitting with you?", "You don’t have to rush through this.", "It’s okay to feel this way.", "Let the weight speak."],
+  neutral: ["Tell me about your day.", "Just a regular day? Let's log it.", "Clear your mind.", "One day at a time.", "What filled the space today?", "You showed up, that’s enough.", "No highs, no lows, still valid."]
 };
 
 const isPlaylistId = (id: string) => !id.includes(',') && (id.startsWith("PL") || id.startsWith("RD") || id.startsWith("UU"));
@@ -110,6 +113,7 @@ export default function JournalPage() {
   const handleVideoPlay = () => {
     setVideoLoaded(true);
   };
+
   useEffect(() => {
     setDisplayedGreeting("");
     setIsTypingComplete(false);
@@ -174,6 +178,23 @@ export default function JournalPage() {
     }
   }, { scope: containerRef, dependencies: [isSaved] });
 
+  const fadeInMusic = () => {
+    if (!playerRef.current) return;
+    playerRef.current.setVolume(0);
+    const volObj = { val: 0 };
+    
+    gsap.to(volObj, {
+        val: volume, 
+        duration: 3, 
+        ease: "power2.out",
+        onUpdate: () => {
+            if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+                playerRef.current.setVolume(volObj.val);
+            }
+        }
+    });
+  };
+
   const fadeOutMusic = (callback: () => void) => {
     if (!playerRef.current) {
         callback();
@@ -211,11 +232,11 @@ export default function JournalPage() {
         setCurrentTrackTitle(`${currentMood.label} Vibe`);
     }
   };
+
   useEffect(() => {
     setQueue([]);
     setQueueIndex(0);
     setIsQueueMode(false);
-    
     setQueueView('suggestions');
 
     const playlistId = currentMood.playlistId;
@@ -266,14 +287,24 @@ export default function JournalPage() {
 
   const onPlayerReady = (event: any) => {
     playerRef.current = event.target;
-    if(playerRef.current.setVolume) playerRef.current.setVolume(volume);
+    if(playerRef.current.setVolume) playerRef.current.setVolume(0); 
+
     if (isMuted && playerRef.current.mute) playerRef.current.mute();
-    if(event.target.playVideo) { event.target.playVideo(); setIsPlaying(true); }
+    
+    if(event.target.playVideo) {
+        event.target.playVideo();
+        setIsPlaying(true);
+    }
     updateTrackTitle(event.target);
+    
+    fadeInMusic();
   };
 
   const onPlayerStateChange = (event: any) => {
-    if (event.data === 1) { setIsPlaying(true); updateTrackTitle(event.target); }
+    if (event.data === 1) { 
+        setIsPlaying(true); 
+        updateTrackTitle(event.target); 
+    }
     if (event.data === 2) setIsPlaying(false);
     if (event.data === 0 && isQueueMode) handleNextTrack();
   };
@@ -296,7 +327,9 @@ export default function JournalPage() {
   const togglePlay = () => {
     if (!playerRef.current) return;
     if (isPlaying && playerRef.current.pauseVideo) playerRef.current.pauseVideo();
-    else if(playerRef.current.playVideo) playerRef.current.playVideo();
+    else if(playerRef.current.playVideo) {
+        playerRef.current.playVideo();
+    }
     setIsPlaying(!isPlaying);
   };
 
@@ -346,7 +379,7 @@ export default function JournalPage() {
         const data = await response.json();
         if (data.title) videoTitle = data.title;
     } catch (err) { console.error("Failed to fetch video title", err); }
- 
+    
     const newItem: QueueItem = { id: videoId, title: videoTitle, isCustom: true };
     const newQueue = [...queue, newItem];
     setQueue(newQueue);
@@ -357,7 +390,6 @@ export default function JournalPage() {
     
     if (!isQueueMode || queue.length === 0) {
         setIsQueueMode(true);
-
         setQueueIndex(newQueue.length - 1); 
     }
     showToast(`Added: ${videoTitle.substring(0, 20)}...`, 'success');
@@ -443,7 +475,6 @@ export default function JournalPage() {
               <span className="text-sm font-bold uppercase tracking-wider">{toast.message}</span>
           </div>
       )}
-
       <div className="fixed top-0 left-[-9999px] w-1 h-1 overflow-hidden z-[-1] opacity-100 pointer-events-none">
          <div className="w-[300px] h-[300px]">
             {isQueueMode && queue.length > 0 ? (
@@ -548,6 +579,7 @@ export default function JournalPage() {
                         <ListMusic className="w-3 h-3" /> <span>{queueView === 'my_queue' ? "My Queue" : "Suggestions"}</span>
                     </div>
                 </div>
+
                 {queueView === 'my_queue' && (
                     <>
                         <form onSubmit={addToQueue} className="flex gap-2 mb-2">
@@ -557,10 +589,7 @@ export default function JournalPage() {
                             </button>
                         </form>
                         
-                        <button 
-                            onClick={() => setQueueView('suggestions')}
-                            className="w-full flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 hover:border-purple-500/40 transition-all mb-2 group"
-                        >
+                        <button onClick={() => setQueueView('suggestions')} className="w-full flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 hover:border-purple-500/40 transition-all mb-2 group">
                              <div className="flex items-center gap-2">
                                 <Sparkles className="w-4 h-4 text-purple-300" />
                                 <span className="text-xs font-bold text-purple-200">Suggestions</span>
@@ -572,7 +601,6 @@ export default function JournalPage() {
                             {getMappedItems(true).length === 0 && (
                                 <p className="text-[10px] text-white/30 text-center py-4 italic">Add your own songs here.</p>
                             )}
-                            
                             {getMappedItems(true).map(({item, index}) => (
                                 <div key={index} onClick={() => jumpToTrack(index)} className={`flex items-center justify-between gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${index === queueIndex ? "bg-white/10 border-white/20" : "bg-transparent border-transparent hover:bg-white/5"}`}>
                                     <div className="flex items-center gap-3 overflow-hidden">
@@ -590,13 +618,9 @@ export default function JournalPage() {
 
                 {queueView === 'suggestions' && (
                      <>
-                        <button 
-                            onClick={() => setQueueView('my_queue')}
-                            className="w-full flex items-center gap-2 p-2 mb-2 text-white/60 hover:text-white transition-colors text-xs uppercase tracking-wider"
-                        >
+                        <button onClick={() => setQueueView('my_queue')} className="w-full flex items-center gap-2 p-2 mb-2 text-white/60 hover:text-white transition-colors text-xs uppercase tracking-wider">
                              <ChevronLeft className="w-4 h-4" /> Back to Queue
                         </button>
-                        
                         <div className="max-h-[60vh] overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-white/10 pr-1">
                             {getMappedItems(false).map(({item, index}) => (
                                 <div key={index} onClick={() => jumpToTrack(index)} className={`flex items-center justify-between gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${index === queueIndex ? "bg-white/10 border-white/20" : "bg-transparent border-transparent hover:bg-white/5"}`}>
@@ -619,7 +643,6 @@ export default function JournalPage() {
                         </div>
                      </>
                 )}
-
             </div>
         )}
 
