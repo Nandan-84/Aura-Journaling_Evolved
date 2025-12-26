@@ -6,7 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { MOOD_DATA } from "@/lib/mood-data";
 import { 
   ArrowLeft, Save, Music, Play, Pause, Bold, Italic, Underline, 
-  Volume2, VolumeX, Plus, Search, X, Disc, ListMusic, SkipBack, SkipForward, Trash2, CheckCircle2
+  Volume2, VolumeX, Plus, Search, X, Disc, ListMusic, SkipBack, SkipForward, Trash2, CheckCircle2, Loader2
 } from "lucide-react";
 import api from "@/lib/api";
 import YouTube from "react-youtube";
@@ -97,7 +97,7 @@ export default function JournalPage() {
     label: "Neutral", 
     color: "from-gray-500 to-gray-600", 
     greeting: "Welcome back.",
-    playlistId: "" 
+    playlistId: "jfKfPfyJRdk" 
   };
   
   const videoUrl = MOOD_VIDEOS[moodKey] || MOOD_VIDEOS["neutral"];
@@ -398,13 +398,12 @@ export default function JournalPage() {
 
   return (
     <main ref={containerRef} className="fixed inset-0 bg-black text-white flex items-center justify-center z-50 overflow-hidden">
-      
-      <div className="hidden">
+      <div className="fixed bottom-0 right-0 z-[-10] opacity-[0.01] pointer-events-none">
         {isQueueMode && queue.length > 0 ? (
            <YouTube
              key={`queue-${queue[queueIndex]}`} 
              videoId={queue[queueIndex]}
-             opts={{ playerVars: { autoplay: 1, controls: 0 } }}
+             opts={{ height: '200', width: '200', playerVars: { autoplay: 1, controls: 0 } }}
              onReady={onPlayerReady}
              onStateChange={onPlayerStateChange}
            />
@@ -413,6 +412,8 @@ export default function JournalPage() {
              <YouTube
                key={`default-${currentMood.playlistId}`} 
                opts={{
+                 height: '200', 
+                 width: '200',
                  playerVars: { 
                    listType: 'playlist', 
                    list: currentMood.playlistId, 
@@ -429,6 +430,8 @@ export default function JournalPage() {
                key={`default-single-${currentMood.playlistId}`} 
                videoId={currentMood.playlistId}
                opts={{
+                 height: '200', 
+                 width: '200',
                  playerVars: { 
                    autoplay: 1, 
                    controls: 0, 
@@ -641,7 +644,7 @@ export default function JournalPage() {
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     <span className="relative flex items-center gap-3">
                         {isSaving ? "Saving..." : "Save Entry"}
-                        <Save className="w-4 h-4" />
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4" />}
                     </span>
                 </button>
             </div>
