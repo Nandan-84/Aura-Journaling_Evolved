@@ -2,16 +2,19 @@
 import { useEffect, useState, useRef } from "react";
 import { 
   ArrowLeft, Save, Music, Play, Pause, Bold, Italic, Underline, 
-  Volume2, VolumeX, Plus, Search, X, Disc, ListMusic, SkipBack, SkipForward, Trash2, CheckCircle2, Loader2, AlertCircle, AlertTriangle, Sparkles, ChevronRight, ChevronLeft
+  Volume2, VolumeX, Plus, Search, X, Disc, ListMusic, SkipBack, SkipForward, Trash2, CheckCircle2, Loader2, AlertCircle, AlertTriangle, Sparkles, ChevronRight, ChevronLeft, ChevronDown
 } from "lucide-react";
 
 
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import { useRouter, useParams } from "next/navigation"; 
+import { useRouter, useParams, useSearchParams } from "next/navigation"; 
 import { MOOD_DATA } from "@/lib/mood-data";
 import api from "@/lib/api";
 import YouTube from "react-youtube";
+
+
+const MOODS_LIST = ["happy", "calm", "energetic", "melancholic", "neutral"];
 
 const RANDOM_GREETINGS: Record<string, string[]> = {
   happy: ["What made you smile today?", "Capture this joy, keep it forever.", "Tell me about your win.", "Happiness looks good on you.", "What made this feeling stick?", "Let this one stay a little longer.", "You’re allowed to enjoy this.", "Hold onto what worked today."],
@@ -33,13 +36,20 @@ interface QueueItem {
 export default function JournalPage() {
   const router = useRouter();
   const params = useParams(); 
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('editId'); 
+
+
   const containerRef = useRef(null);
   const playerRef = useRef<any>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null); 
   
-  const moodKey = (typeof params?.mood === 'string' ? params.mood : "neutral");
-  
+
+  const urlMood = (typeof params?.mood === 'string' ? params.mood : "neutral");
+  const [selectedMood, setSelectedMood] = useState(urlMood);
+  const [isMoodMenuOpen, setIsMoodMenuOpen] = useState(false);
+
   const [content, setContent] = useState("");
   const [isPlaying, setIsPlaying] = useState(false); 
   const [isSaving, setIsSaving] = useState(false);
@@ -81,16 +91,37 @@ export default function JournalPage() {
     neutral: "caret-gray-400",
   };
 
-  const currentMood = MOOD_DATA[moodKey] || MOOD_DATA["neutral"];
   
+  const currentMood = MOOD_DATA[selectedMood] || MOOD_DATA["neutral"];
+  const videoUrl = MOOD_VIDEOS[selectedMood] || MOOD_VIDEOS["neutral"];
+  const caretColorClass = MOOD_CARETS[selectedMood] || "caret-white";
+
   const [activeVideoId, setActiveVideoId] = useState(currentMood.playlistId);
+
+ 
+  useEffect(() => {
+    if (editId) {
+        const fetchEntryForEdit = async () => {
+             try {
+                 const res = await api.get('/entries');
+                 const found = res.data?.find((e:any) => e.id === editId);
+                 if (found) {
+                     setContent(found.content);
+                     if (editorRef.current) editorRef.current.innerHTML = found.content;
+                     setSelectedMood(found.mood.toLowerCase());
+                 }
+             } catch(e) {
+                 console.error("Failed to load edit entry", e);
+             }
+        };
+        fetchEntryForEdit();
+    }
+  }, [editId]);
+
 
   useEffect(() => {
       setActiveVideoId(currentMood.playlistId);
-  }, [moodKey, currentMood.playlistId]);
-  
-  const videoUrl = MOOD_VIDEOS[moodKey] || MOOD_VIDEOS["neutral"];
-  const caretColorClass = MOOD_CARETS[moodKey] || "caret-white";
+  }, [selectedMood]);
 
   const LOOP_START_POINT = 2.0; 
 
@@ -115,9 +146,16 @@ export default function JournalPage() {
   };
 
   useEffect(() => {
+
+    if (editId) {
+        setDisplayedGreeting(currentMood.greeting || "Welcome Back");
+        setIsTypingComplete(true);
+        return;
+    }
+
     setDisplayedGreeting("");
     setIsTypingComplete(false);
-    const options = RANDOM_GREETINGS[moodKey] || RANDOM_GREETINGS["neutral"];
+    const options = RANDOM_GREETINGS[selectedMood] || RANDOM_GREETINGS["neutral"];
     const textToType = options[Math.floor(Math.random() * options.length)];
     setFinalGreeting(textToType);
     let i = 0;
@@ -133,7 +171,7 @@ export default function JournalPage() {
       return () => clearInterval(typeWriter);
     }, 1500);
     return () => clearTimeout(startDelay);
-  }, [moodKey]);
+  }, [selectedMood, editId]); 
 
   useGSAP(() => {
     const tl = gsap.timeline();
@@ -283,7 +321,7 @@ export default function JournalPage() {
              setActiveVideoId(playlistId);
         }
     }
-  }, [moodKey, currentMood.playlistId]);
+  }, [selectedMood, currentMood.playlistId]); 
 
   const onPlayerReady = (event: any) => {
     playerRef.current = event.target;
@@ -428,9 +466,19 @@ export default function JournalPage() {
     if (!editorRef.current?.innerText.trim()) return;
     setIsSaving(true);
     try {
-      await api.post("/entries", { content: htmlContent, mood: currentMood.label });
+      if (editId) {
+      
+          await api.put(`/entries/${editId}`, { content: htmlContent, mood: currentMood.label });
+          showToast("Entry Updated!", 'success');
+      } else {
+          
+          await api.post("/entries", { content: htmlContent, mood: currentMood.label });
+      }
       triggerSuccess();
-    } catch (error) { triggerSuccess(); }
+    } catch (error) { 
+        showToast("Save failed", 'error'); 
+        setIsSaving(false); 
+    }
   };
 
   const triggerSuccess = () => {
@@ -475,6 +523,8 @@ export default function JournalPage() {
               <span className="text-sm font-bold uppercase tracking-wider">{toast.message}</span>
           </div>
       )}
+
+      
       <div className="fixed top-0 left-[-9999px] w-1 h-1 overflow-hidden z-[-1] opacity-100 pointer-events-none">
          <div className="w-[300px] h-[300px]">
             {isQueueMode && queue.length > 0 ? (
@@ -510,9 +560,10 @@ export default function JournalPage() {
       </div>
 
       <div className="journal-window relative bg-[#050505] w-full h-full flex flex-col items-center justify-center overflow-hidden z-10">
+
+
         <div className="absolute inset-0 bg-black pointer-events-none -z-10" />
-        <div className="absolute inset-0 pointer-events-none z-10"
-             style={{ maskImage: 'radial-gradient(circle at center, transparent 40%, black 100%)', WebkitMaskImage: 'radial-gradient(circle at center, transparent 40%, black 100%)' }}>
+        <div className="absolute inset-0 pointer-events-none z-10" style={{ maskImage: 'radial-gradient(circle at center, transparent 40%, black 100%)', WebkitMaskImage: 'radial-gradient(circle at center, transparent 40%, black 100%)' }}>
              <div className={`wave-top absolute top-0 left-0 right-0 h-[40vh] bg-gradient-to-b ${currentMood.color} to-transparent opacity-40 blur-[80px]`} />
              <div className={`wave-bottom absolute bottom-0 left-0 right-0 h-[40vh] bg-gradient-to-t ${currentMood.color} to-transparent opacity-40 blur-[80px]`} />
              <div className={`wave-left absolute top-0 bottom-0 left-0 w-[30vw] bg-gradient-to-r ${currentMood.color} to-transparent opacity-40 blur-[80px]`} />
@@ -566,6 +617,34 @@ export default function JournalPage() {
             </button>
         </div>
 
+        
+        {editId && (
+            <div className="top-controls opacity-0 translate-y-4 absolute top-8 left-1/2 -translate-x-1/2 z-30">
+                <div className="relative">
+                    <button 
+                        onClick={() => setIsMoodMenuOpen(!isMoodMenuOpen)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full backdrop-blur-md transition-all text-sm font-medium"
+                    >
+                        <span className="capitalize">{currentMood.label}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isMoodMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isMoodMenuOpen && (
+                        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-48 bg-black/90 border border-white/10 rounded-xl p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95">
+                            {MOODS_LIST.map((m) => (
+                                <button
+                                    key={m}
+                                    onClick={() => { setSelectedMood(m); setIsMoodMenuOpen(false); }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors capitalize ${selectedMood === m ? "bg-white/20 text-white" : "text-white/60 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
+
         <div className="volume-control opacity-0 absolute right-8 top-1/2 -translate-y-1/2 z-30 h-48 w-10 flex items-center justify-center bg-white/5 backdrop-blur-md border border-white/10 rounded-full shadow-lg">
              <div className="relative w-full h-full flex items-center justify-center">
                 <input type="range" min="0" max="100" value={volume} onChange={handleVolumeChange} className="absolute w-32 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer hover:bg-white/40 accent-white transition-all -rotate-90 origin-center outline-none" />
@@ -588,7 +667,6 @@ export default function JournalPage() {
                                 {isAddingToQueue ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-4 h-4" />}
                             </button>
                         </form>
-                        
                         <button onClick={() => setQueueView('suggestions')} className="w-full flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 hover:border-purple-500/40 transition-all mb-2 group">
                              <div className="flex items-center gap-2">
                                 <Sparkles className="w-4 h-4 text-purple-300" />
@@ -596,7 +674,6 @@ export default function JournalPage() {
                              </div>
                              <ChevronRight className="w-4 h-4 text-purple-300/50 group-hover:translate-x-1 transition-transform" />
                         </button>
-                        
                         <div className="max-h-[50vh] overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-white/10 pr-1">
                             {getMappedItems(true).length === 0 && (
                                 <p className="text-[10px] text-white/30 text-center py-4 italic">Add your own songs here.</p>
@@ -676,7 +753,7 @@ export default function JournalPage() {
             <div className="glass-editor-box opacity-0 translate-y-8 mt-8">
                 <button onClick={handleSave} disabled={isSaving} className="group relative px-12 py-4 bg-white text-black rounded-xl font-bold uppercase tracking-[0.2em] text-xs hover:scale-105 transition-all overflow-hidden shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_50px_rgba(255,255,255,0.3)]">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                    <span className="relative flex items-center gap-3">{isSaving ? "Saving..." : "Save Entry"}{isSaving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4" />}</span>
+                    <span className="relative flex items-center gap-3">{isSaving ? "Saving..." : editId ? "Update Entry" : "Save Entry"}{isSaving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4" />}</span>
                 </button>
             </div>
         </div>

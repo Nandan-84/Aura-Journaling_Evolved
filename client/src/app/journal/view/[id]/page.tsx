@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { ArrowLeft, Clock, Trash2, AlertTriangle, Edit2, Loader2 } from "lucide-react";
+
+
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Clock, Trash2, AlertTriangle, X } from "lucide-react";
 import api from "@/lib/api";
 import { MOOD_DATA } from "@/lib/mood-data";
 
@@ -56,24 +58,25 @@ export default function ViewJournalPage() {
     }
   };
 
+  const handleEdit = () => {
+      router.push(`/journal/${entry.mood.toLowerCase()}?editId=${entry.id}`);
+  };
+
   const moodKey = entry?.mood?.toLowerCase() || "neutral";
   const currentMood = MOOD_DATA[moodKey] || MOOD_DATA["neutral"];
   const videoUrl = MOOD_VIDEOS[moodKey] || MOOD_VIDEOS["neutral"];
+  const isToday = entry ? new Date(entry.createdAt).toDateString() === new Date().toDateString() : false;
 
   useGSAP(() => {
     if (loading || !entry) return;
     const tl = gsap.timeline();
-
     tl.fromTo(".journal-window", 
       { scale: 0.9, opacity: 0 },
       { scale: 1, opacity: 1, duration: 1.2, ease: "power3.out" }
     );
-
     gsap.to(".wave-left", { scaleX: 1.2, opacity: 0.8, duration: 4, yoyo: true, repeat: -1, ease: "sine.inOut" });
     gsap.to(".wave-right", { scaleX: 1.2, opacity: 0.8, duration: 4, yoyo: true, repeat: -1, delay: 1, ease: "sine.inOut" });
-
     tl.fromTo(".content-area", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, "-=0.5");
-
   }, { scope: containerRef, dependencies: [loading, entry] });
 
   if (loading) return <div className="min-h-screen bg-black" />;
@@ -92,7 +95,7 @@ export default function ViewJournalPage() {
              <div className={`wave-right absolute top-0 bottom-0 right-0 w-[30vw] bg-gradient-to-l ${currentMood.color} to-transparent opacity-40 blur-[80px]`} />
         </div>
 
-        <div className="absolute top-8 left-8 z-30">
+        <div className="absolute top-8 left-8 z-30 flex items-center gap-4 w-[calc(100%-4rem)] justify-between">
             <button 
                 onClick={() => router.push('/dashboard')} 
                 className="flex items-center gap-3 text-white/40 hover:text-white transition-colors group"
@@ -102,21 +105,24 @@ export default function ViewJournalPage() {
                 </div>
                 <span className="text-xs font-medium uppercase tracking-[0.2em]">Dashboard</span>
             </button>
+
+            {isToday && (
+                <button 
+                    onClick={handleEdit}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md"
+                >
+                    <Edit2 className="w-4 h-4" /> Edit Entry
+                </button>
+            )}
         </div>
 
         <div className="content-area relative z-20 w-full max-w-5xl h-[70vh] rounded-3xl overflow-hidden border border-white/20 shadow-2xl mt-12">
-            
             <div className="absolute inset-0 z-0 bg-black">
-                 <video 
-                    autoPlay loop muted playsInline
-                    className="w-full h-full object-cover opacity-60" 
-                    src={videoUrl}
-                />
+                 <video autoPlay loop muted playsInline className="w-full h-full object-cover opacity-60" src={videoUrl} />
             </div>
             <div className="absolute inset-0 z-10 bg-black/20" /> 
 
             <div className="relative z-20 w-full h-full flex flex-col p-12 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20">
-                
                 <div className="flex justify-between items-end border-b border-white/10 pb-6 mb-8">
                     <div>
                         <h1 className="text-3xl font-light text-white mb-2">{entry.mood} Reflection</h1>
@@ -130,11 +136,7 @@ export default function ViewJournalPage() {
                     </div>
                 </div>
 
-                <div 
-                    className="text-xl leading-relaxed font-light text-white/90"
-                    dangerouslySetInnerHTML={{ __html: entry.content }}
-                />
-
+                <div className="text-xl leading-relaxed font-light text-white/90" dangerouslySetInnerHTML={{ __html: entry.content }} />
             </div>
         </div>
 
@@ -143,8 +145,7 @@ export default function ViewJournalPage() {
                 onClick={() => setShowConfirm(true)}
                 className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition-all text-xs font-bold uppercase tracking-wider backdrop-blur-md"
             >
-                <Trash2 className="w-4 h-4" />
-                Delete Entry
+                <Trash2 className="w-4 h-4" /> Delete Entry
             </button>
         </div>
 
@@ -159,24 +160,12 @@ export default function ViewJournalPage() {
                         This action cannot be undone. This memory will be lost in time forever.
                     </p>
                     <div className="flex gap-3 justify-center">
-                        <button 
-                            onClick={() => setShowConfirm(false)}
-                            className="px-5 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white font-medium text-sm transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            onClick={handleDelete}
-                            disabled={isDeleting}
-                            className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-sm transition-colors"
-                        >
-                            {isDeleting ? "Deleting..." : "Yes, Delete"}
-                        </button>
+                        <button onClick={() => setShowConfirm(false)} className="px-5 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white font-medium text-sm transition-colors">Cancel</button>
+                        <button onClick={handleDelete} disabled={isDeleting} className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-sm transition-colors">{isDeleting ? "Deleting..." : "Yes, Delete"}</button>
                     </div>
                 </div>
             </div>
         )}
-
       </div>
     </main>
   );
